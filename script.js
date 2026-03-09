@@ -107,9 +107,9 @@ function renderTable() {
     const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
     const favTags = pokemon.favorites.map(fav => `<span class="tag fav">${fav}</span>`).join('');
     tr.innerHTML = `
-      <td><strong>${pokemon.name}</strong></td>
-      <td>${envTags}</td>
-      <td>${favTags}</td>
+      <td data-label="ポケモン名"><strong>${pokemon.name}</strong></td>
+      <td data-label="🌲 好きな環境">${envTags}</td>
+      <td data-label="🪑 好きなもの">${favTags}</td>
     `;
     tableBody.appendChild(tr);
   });

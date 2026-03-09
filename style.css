@@ -141,4 +141,64 @@ tr:hover {
     border-color: #ccc;
     color: #ccc;
     cursor: not-allowed;
-    background-color: #f9f9f9; }
+    background-color: #f9f9f9;
+}
+
+/* ▼ スマホ用レスポンシブデザイン（横幅768px以下の場合） ▼ */
+@media screen and (max-width: 768px) {
+
+    /* テーブルのヘッダー（青い帯）を非表示にする */
+    table thead {
+        display: none;
+    }
+
+    /* テーブル全体をブロック要素（縦積み）にする */
+    table,
+    tbody,
+    tr,
+    td {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* 1行（ポケモン1匹）をカード風にする */
+    table tr {
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+        background-color: #fff;
+        padding: 12px;
+    }
+
+    /* セルのデザイン調整 */
+    table td {
+        border-bottom: none;
+        padding: 6px 0;
+        text-align: left;
+    }
+
+    /* 各項目の見出しをCSSで追加する（後述のdata-label属性を利用） */
+    table td::before {
+        content: attr(data-label);
+        display: block;
+        font-weight: bold;
+        color: #3498db;
+        font-size: 12px;
+        margin-bottom: 4px;
+    }
+
+    /* ポケモン名（1番目のセル）だけタイトルっぽく目立たせる */
+    table td:first-child {
+        font-size: 18px;
+        border-bottom: 1px solid #eee;
+        margin-bottom: 8px;
+        padding-bottom: 8px;
+    }
+
+    /* ポケモン名の上には見出しラベルを出さない */
+    table td:first-child::before {
+        display: none;
+    }
+}
