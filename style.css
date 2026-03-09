@@ -1,0 +1,144 @@
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+    color: #2c3e50;
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    background: #e8f4f8;
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 200px;
+}
+
+label {
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #34495e;
+    font-size: 14px;
+}
+
+select,
+input {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th,
+td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #3498db;
+    color: white;
+    white-space: nowrap;
+}
+
+tr:hover {
+    background-color: #f1f1f1;
+}
+
+.tag {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 13px;
+    margin: 2px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.tag:hover {
+    opacity: 0.6;
+}
+
+.tag.env {
+    background: #dff0d8;
+    color: #3c763d;
+    border: 1px solid #d6e9c6;
+}
+
+.tag.fav {
+    background: #d9edf7;
+    color: #31708f;
+    border: 1px solid #bce8f1;
+}
+
+.empty-message {
+    text-align: center;
+    color: #777;
+    padding: 20px;
+}
+
+/* ページネーション用のデザイン▼ */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.page-btn {
+    padding: 8px 14px;
+    border: 1px solid #3498db;
+    background-color: #fff;
+    color: #3498db;
+    cursor: pointer;
+    border-radius: 4px;
+    font-weight: bold;
+    transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+    background-color: #e8f4f8;
+}
+
+.page-btn.active {
+    background-color: #3498db;
+    color: #fff;
+    cursor: default;
+}
+
+.page-btn:disabled {
+    border-color: #ccc;
+    color: #ccc;
+    cursor: not-allowed;
+    background-color: #f9f9f9; }

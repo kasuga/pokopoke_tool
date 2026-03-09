@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ぽこあポケモン 好きな環境・好きなもの検索ツール</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <div class="container">
+    <h1>ぽこあポケモン 検索ツール</h1>
+
+    <div class="controls">
+      <div class="filter-group">
+        <label for="searchName">🔍 ポケモン名で検索</label>
+        <input type="text" id="searchName" placeholder="例: ピカチュウ">
+      </div>
+      <div class="filter-group">
+        <label for="filterEnv">🌲 好きな環境で絞り込み</label>
+        <select id="filterEnv">
+          <option value="">すべて</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filterFav">🪑 好きなもので絞り込み</label>
+        <select id="filterFav">
+          <option value="">すべて</option>
+        </select>
+      </div>
+    </div>
+
+    <table id="pokemonTable">
+      <thead>
+        <tr>
+          <th>ポケモン名</th>
+          <th>好きな環境</th>
+          <th>好きなもの（家具・アイテム）</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+      </tbody>
+    </table>
+
+    <div id="pagination" class="pagination"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
