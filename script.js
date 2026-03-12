@@ -1,6 +1,9 @@
+// スプレッドシートのURL
 const RAW_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?output=csv';
 const timestamp = new Date().getTime();
-const SPREADSHEET_CSV_URL = 'https://corsproxy.io/?' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
+
+// ▼変更：別のプロキシサーバー（codetabs）に切り替える▼
+const SPREADSHEET_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
 
 let pokemonData = [];
 const tableBody = document.getElementById('tableBody');
