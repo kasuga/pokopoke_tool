@@ -24,6 +24,12 @@ function updateSelectOptions(selectElement, optionsArray) {
   });
 }
 
+function hiraToKata(str) {
+  return str.replace(/[ぁ-ん]/g, function(s) {
+    return String.fromCharCode(s.charCodeAt(0) + 0x60);
+  });
+}
+
 function parseCSVRow(text) {
   const result = [];
   let current = '';
@@ -145,8 +151,9 @@ function renderTable() {
   const favQuery = filterFav.value;
 
   // 1. まず条件に合うものを全て絞り込む
+  const queryKata = hiraToKata(nameQuery);
   const filteredData = pokemonData.filter(pokemon => {
-    const matchName = pokemon.name.includes(nameQuery);
+    const matchName = pokemon.name.includes(nameQuery) || pokemon.name.includes(queryKata);
     const matchEnv = envQuery === "" || pokemon.environments.includes(envQuery);
     const matchFav = favQuery === "" || pokemon.favorites.includes(favQuery);
     return matchName && matchEnv && matchFav;
