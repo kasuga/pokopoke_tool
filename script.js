@@ -193,9 +193,11 @@ function renderTable() {
         : `<div class="thumb-img placeholder-img"></div>`;
 
     tr.innerHTML = `
-      <td data-label="ポケモン名" class="pokemon-name-cell">
-        ${imgHtml}
-        <strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong>
+      <td data-label="ポケモン名">
+        <div class="pokemon-name-cell">
+          ${imgHtml}
+          <strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong>
+        </div>
       </td>
       <td data-label="🌲 好きな環境">${envTags}</td>
       <td data-label="🪑 好きなもの">${favTags}</td>
