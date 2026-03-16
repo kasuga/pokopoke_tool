@@ -1,9 +1,9 @@
-// スプレッドシートのURL
-const RAW_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?output=csv';
-const timestamp = new Date().getTime();
-const SPREADSHEET_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
+const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?';
+const RAW_URL = BASE_URL + 'output=csv';
+const URL_POKEMON_IMAGES = BASE_URL + 'gid=241891908&output=csv';
 
 let pokemonData = [];
+let pokemonImageMap = {}; // ポケモン画像URLのマップ
 const tableBody = document.getElementById('tableBody');
 const searchName = document.getElementById('searchName');
 const filterEnv = document.getElementById('filterEnv');
@@ -49,9 +49,14 @@ function parseCSVRow(text) {
 }
 
 async function fetchData() {
+  const timestamp = new Date().getTime();
+  const SPREADSHEET_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
+  const POKEMON_IMAGES_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(URL_POKEMON_IMAGES + '&t=' + timestamp);
+
   try {
     tableBody.innerHTML = '<tr><td colspan="3" class="empty-message">データを読み込み中...</td></tr>';
 
+    // 1. ポケモン名簿CSVの取得
     let csvText = sessionStorage.getItem('cachedLikesCSV');
     if (!csvText) {
       const response = await fetch(SPREADSHEET_CSV_URL);
@@ -60,7 +65,29 @@ async function fetchData() {
       sessionStorage.setItem('cachedLikesCSV', csvText);
     }
 
-    // items 用のデータを裏で先読みしておく（pokemon.html での読み込み速度を上げるため）
+    // 2. ポケモン画像CSVの取得
+    let pokemonImagesText = sessionStorage.getItem('cachedPokemonImagesCSV');
+    if (!pokemonImagesText) {
+      const response = await fetch(POKEMON_IMAGES_CSV_URL);
+      if (response.ok) {
+        pokemonImagesText = await response.text();
+        sessionStorage.setItem('cachedPokemonImagesCSV', pokemonImagesText);
+      }
+    }
+    
+    // 画像マップの作成
+    if (pokemonImagesText) {
+      const imgRows = pokemonImagesText.split('\n');
+      imgRows.forEach((row, idx) => {
+        if (idx === 0) return;
+        const cols = parseCSVRow(row.trim());
+        if (cols.length >= 2) {
+          pokemonImageMap[cols[0].trim()] = cols[1].trim();
+        }
+      });
+    }
+
+    // 3. アイテム名簿CSVの先読み（pokemon.html用）
     if (!sessionStorage.getItem('cachedItemsCSV')) {
       const URL_ITEMS = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent('https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?gid=1403600136&single=true&output=csv&t=' + timestamp);
       fetch(URL_ITEMS)
@@ -87,10 +114,12 @@ async function fetchData() {
         const environments = columns[1].split(/[,、]/).map(s => s.trim()).filter(s => s !== "");
         const favorites = columns[2].split(/[,、]/).map(s => s.trim()).filter(s => s !== "");
 
+        const name = columns[0].trim();
         pokemonData.push({
-          name: columns[0].trim(),
+          name: name,
           environments: environments,
-          favorites: favorites
+          favorites: favorites,
+          imageUrl: pokemonImageMap[name] || null
         });
 
         environments.forEach(env => envSet.add(env));
@@ -157,9 +186,17 @@ function renderTable() {
 
     const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
     const favTags = pokemon.favorites.map(fav => `<span class="tag fav">${fav}</span>`).join('');
+    
+    // 画像タグの生成（URLがある場合）
+    const imgHtml = pokemon.imageUrl 
+        ? `<img src="${pokemon.imageUrl}" alt="${pokemon.name}" class="thumb-img">`
+        : `<div class="thumb-img placeholder-img"></div>`;
 
     tr.innerHTML = `
-      <td data-label="ポケモン名"><strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong></td>
+      <td data-label="ポケモン名" class="pokemon-name-cell">
+        ${imgHtml}
+        <strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong>
+      </td>
       <td data-label="🌲 好きな環境">${envTags}</td>
       <td data-label="🪑 好きなもの">${favTags}</td>
     `;
