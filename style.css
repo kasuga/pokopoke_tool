@@ -77,17 +77,20 @@ tr:hover {
 
 .tag {
     display: inline-block;
-    padding: 4px 8px;
+    padding: 5px 10px;
     border-radius: 12px;
     font-size: 13px;
-    margin: 2px;
+    margin: 3px;
     font-weight: bold;
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: opacity 0.2s, background-color 0.2s;
+    background: #d9edf7;
+    color: #31708f;
+    border: 1px solid #bce8f1;
 }
 
 .tag:hover {
-    opacity: 0.6;
+    opacity: 0.8;
 }
 
 .tag.env {
@@ -100,6 +103,16 @@ tr:hover {
     background: #d9edf7;
     color: #31708f;
     border: 1px solid #bce8f1;
+}
+
+.clickable-row {
+    transition: background-color 0.2s, transform 0.1s;
+}
+.clickable-row:hover {
+    background-color: #f1f8ff !important;
+}
+.clickable-row:active {
+    background-color: #e5f2ff !important;
 }
 
 .empty-message {
@@ -142,6 +155,17 @@ tr:hover {
     color: #ccc;
     cursor: not-allowed;
     background-color: #f9f9f9;
+}
+
+.pokemon-link {
+    color: #3498db;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.pokemon-link:hover {
+    text-decoration: underline;
+    color: #2980b9;
 }
 
 /* ▼ スマホ用レスポンシブデザイン（横幅768px以下の場合） ▼ */

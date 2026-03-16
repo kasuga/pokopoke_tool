@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポケモン個別ページ</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .detail-card { margin-top: 20px; background: #e8f4f8; padding: 20px; border-radius: 8px; }
+    .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+    .item-card { background: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .back-link { display: inline-block; margin-bottom: 20px; text-decoration: none; color: #3498db; font-weight: bold; }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-link">← 一覧に戻る</a>
+    <div id="pokemonDetail">
+      <p class="empty-message">データを読み込み中...</p>
+    </div>
+  </div>
+  <script src="pokemon.js"></script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 const RAW_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?output=csv';
 const timestamp = new Date().getTime();
-const SPREADSHEET_CSV_URL = 'https://corsproxy.io/?' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
+const SPREADSHEET_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
 
 let pokemonData = [];
 const tableBody = document.getElementById('tableBody');
@@ -23,13 +23,53 @@ function updateSelectOptions(selectElement, optionsArray) {
   });
 }
 
+function parseCSVRow(text) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (inQuotes && text[i+1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
 async function fetchData() {
   try {
     tableBody.innerHTML = '<tr><td colspan="3" class="empty-message">データを読み込み中...</td></tr>';
 
-    const response = await fetch(SPREADSHEET_CSV_URL);
-    if (!response.ok) throw new Error('ネットワークエラー');
-    const csvText = await response.text();
+    let csvText = sessionStorage.getItem('cachedLikesCSV');
+    if (!csvText) {
+      const response = await fetch(SPREADSHEET_CSV_URL);
+      if (!response.ok) throw new Error('ネットワークエラー');
+      csvText = await response.text();
+      sessionStorage.setItem('cachedLikesCSV', csvText);
+    }
+
+    // items 用のデータを裏で先読みしておく（pokemon.html での読み込み速度を上げるため）
+    if (!sessionStorage.getItem('cachedItemsCSV')) {
+      const URL_ITEMS = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent('https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?gid=1403600136&single=true&output=csv&t=' + timestamp);
+      fetch(URL_ITEMS)
+        .then(res => {
+          if (res.ok) return res.text();
+          throw new Error('Items fetch failed');
+        })
+        .then(itemsCsv => sessionStorage.setItem('cachedItemsCSV', itemsCsv))
+        .catch(err => console.error('items preload error:', err));
+    }
 
     const rows = csvText.split('\n');
     pokemonData = [];
@@ -41,10 +81,10 @@ async function fetchData() {
       const row = rows[i].trim();
       if (!row) continue;
 
-      const columns = row.split(',');
+      const columns = parseCSVRow(row);
       if (columns.length >= 3) {
-        const environments = columns[1].split('、').map(s => s.trim()).filter(s => s !== "");
-        const favorites = columns[2].split('、').map(s => s.trim()).filter(s => s !== "");
+        const environments = columns[1].split(/[,、]/).map(s => s.trim()).filter(s => s !== "");
+        const favorites = columns[2].split(/[,、]/).map(s => s.trim()).filter(s => s !== "");
 
         pokemonData.push({
           name: columns[0].trim(),
@@ -104,10 +144,21 @@ function renderTable() {
   // 3. テーブルに描画
   paginatedData.forEach(pokemon => {
     const tr = document.createElement('tr');
+    tr.className = 'clickable-row';
+    tr.style.cursor = 'pointer';
+    tr.onclick = function(event) {
+      // タグやリンクがクリックされた場合は遷移させない（各々の動作を優先）
+      if (event.target.closest('.tag') || event.target.closest('a')) {
+        return;
+      }
+      window.location.href = `pokemon.html?name=${encodeURIComponent(pokemon.name)}`;
+    };
+
     const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
     const favTags = pokemon.favorites.map(fav => `<span class="tag fav">${fav}</span>`).join('');
+    
     tr.innerHTML = `
-      <td data-label="ポケモン名"><strong>${pokemon.name}</strong></td>
+      <td data-label="ポケモン名"><strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong></td>
       <td data-label="🌲 好きな環境">${envTags}</td>
       <td data-label="🪑 好きなもの">${favTags}</td>
     `;
