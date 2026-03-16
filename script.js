@@ -1,3 +1,4 @@
+// スプレッドシートのURL
 const RAW_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?output=csv';
 const timestamp = new Date().getTime();
 const SPREADSHEET_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
@@ -156,7 +157,7 @@ function renderTable() {
 
     const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
     const favTags = pokemon.favorites.map(fav => `<span class="tag fav">${fav}</span>`).join('');
-    
+
     tr.innerHTML = `
       <td data-label="ポケモン名"><strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong></td>
       <td data-label="🌲 好きな環境">${envTags}</td>
