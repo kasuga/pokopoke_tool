@@ -4,7 +4,21 @@ const URL_ITEMS = BASE_URL + 'gid=1403600136&single=true&output=csv';
 const URL_POKEMON_IMAGES = BASE_URL + 'gid=241891908&output=csv';
 const URL_ITEM_IMAGES = BASE_URL + 'gid=1960224020&output=csv';
 
-const proxy = (url) => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url + '&t=' + new Date().getTime());
+const getCacheBuster = () => Math.floor(new Date().getTime() / (1000 * 60 * 5));
+
+async function smartFetch(url) {
+  const fullUrl = url + '&t=' + getCacheBuster();
+  try {
+    const res = await fetch(fullUrl);
+    if (res.ok) return await res.text();
+  } catch (e) {
+    console.warn("Direct fetch failed, falling back to proxy:", e);
+  }
+  const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(fullUrl);
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('通信エラー');
+  return await res.text();
+}
 
 async function init() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -22,13 +36,30 @@ async function init() {
     let pokemonImagesCsv = sessionStorage.getItem('cachedPokemonImagesCSV');
     let itemImagesCsv = sessionStorage.getItem('cachedItemImagesCSV');
 
-    const fetches = [];
-    if (!likesCsv) fetches.push(fetch(proxy(URL_LIKES)).then(r => r.text())); else fetches.push(Promise.resolve(likesCsv));
-    if (!itemsCsv) fetches.push(fetch(proxy(URL_ITEMS)).then(r => r.text())); else fetches.push(Promise.resolve(itemsCsv));
-    if (!pokemonImagesCsv) fetches.push(fetch(proxy(URL_POKEMON_IMAGES)).then(r => r.text())); else fetches.push(Promise.resolve(pokemonImagesCsv));
-    if (!itemImagesCsv) fetches.push(fetch(proxy(URL_ITEM_IMAGES)).then(r => r.text())); else fetches.push(Promise.resolve(itemImagesCsv));
+    const fetchPromises = [];
+    const keys = [];
 
-    [likesCsv, itemsCsv, pokemonImagesCsv, itemImagesCsv] = await Promise.all(fetches);
+    const checkAndPush = (csv, url, key) => {
+      if (!csv) {
+        fetchPromises.push(smartFetch(url));
+        keys.push(key);
+      } else {
+        fetchPromises.push(Promise.resolve(csv));
+        keys.push(null);
+      }
+    };
+
+    checkAndPush(likesCsv, URL_LIKES, 'cachedLikesCSV');
+    checkAndPush(itemsCsv, URL_ITEMS, 'cachedItemsCSV');
+    checkAndPush(pokemonImagesCsv, URL_POKEMON_IMAGES, 'cachedPokemonImagesCSV');
+    checkAndPush(itemImagesCsv, URL_ITEM_IMAGES, 'cachedItemImagesCSV');
+
+    const results = await Promise.all(fetchPromises);
+    results.forEach((text, i) => {
+      if (keys[i]) sessionStorage.setItem(keys[i], text);
+    });
+
+    [likesCsv, itemsCsv, pokemonImagesCsv, itemImagesCsv] = results;
 
     sessionStorage.setItem('cachedLikesCSV', likesCsv);
     sessionStorage.setItem('cachedItemsCSV', itemsCsv);

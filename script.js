@@ -1,8 +1,29 @@
 const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?';
 const RAW_URL = BASE_URL + 'output=csv';
 const URL_POKEMON_IMAGES = BASE_URL + 'gid=241891908&output=csv';
+const URL_ITEMS = BASE_URL + 'gid=1403600136&single=true&output=csv';
 
-let pokemonData = [];
+// キャッシュを効率的に使いつつ最新を取得するためのタイムスタンプ（5分単位）
+const getCacheBuster = () => {
+  return Math.floor(new Date().getTime() / (1000 * 60 * 5));
+};
+
+// 直接フェッチを優先し、失敗した場合にプロキシを使用するヘルパー
+async function smartFetch(url) {
+  const fullUrl = url + '&t=' + getCacheBuster();
+  try {
+    // まずは直接取得を試みる（CORS許可されている場合が多いため）
+    const res = await fetch(fullUrl);
+    if (res.ok) return await res.text();
+  } catch (e) {
+    console.warn("Direct fetch failed, falling back to proxy:", e);
+  }
+  // 失敗した場合はプロキシ経由で再試行
+  const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(fullUrl);
+  const res = await fetch(proxyUrl);
+  if (!res.ok) throw new Error('通信エラー');
+  return await res.text();
+}
 let pokemonImageMap = {}; // ポケモン画像URLのマップ
 const tableBody = document.getElementById('tableBody');
 const searchName = document.getElementById('searchName');
@@ -55,32 +76,31 @@ function parseCSVRow(text) {
 }
 
 async function fetchData() {
-  const timestamp = new Date().getTime();
-  const SPREADSHEET_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(RAW_URL + '&t=' + timestamp);
-  const POKEMON_IMAGES_CSV_URL = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(URL_POKEMON_IMAGES + '&t=' + timestamp);
-
   try {
     tableBody.innerHTML = '<tr><td colspan="3" class="empty-message">データを読み込み中...</td></tr>';
 
-    // 1. ポケモン名簿CSVの取得
     let csvText = sessionStorage.getItem('cachedLikesCSV');
-    if (!csvText) {
-      const response = await fetch(SPREADSHEET_CSV_URL);
-      if (!response.ok) throw new Error('ネットワークエラー');
-      csvText = await response.text();
-      sessionStorage.setItem('cachedLikesCSV', csvText);
+    let pokemonImagesText = sessionStorage.getItem('cachedPokemonImagesCSV');
+    let itemsText = sessionStorage.getItem('cachedItemsCSV');
+
+    // キャッシュがないものだけ取得リストに追加
+    const fetchPromises = [];
+    const keys = [];
+
+    if (!csvText) { fetchPromises.push(smartFetch(RAW_URL)); keys.push('cachedLikesCSV'); }
+    if (!pokemonImagesText) { fetchPromises.push(smartFetch(URL_POKEMON_IMAGES)); keys.push('cachedPokemonImagesCSV'); }
+    if (!itemsText) { fetchPromises.push(smartFetch(URL_ITEMS)); keys.push('cachedItemsCSV'); }
+
+    if (fetchPromises.length > 0) {
+      const results = await Promise.all(fetchPromises);
+      results.forEach((text, i) => {
+        sessionStorage.setItem(keys[i], text);
+        if (keys[i] === 'cachedLikesCSV') csvText = text;
+        if (keys[i] === 'cachedPokemonImagesCSV') pokemonImagesText = text;
+        if (keys[i] === 'cachedItemsCSV') itemsText = text;
+      });
     }
 
-    // 2. ポケモン画像CSVの取得
-    let pokemonImagesText = sessionStorage.getItem('cachedPokemonImagesCSV');
-    if (!pokemonImagesText) {
-      const response = await fetch(POKEMON_IMAGES_CSV_URL);
-      if (response.ok) {
-        pokemonImagesText = await response.text();
-        sessionStorage.setItem('cachedPokemonImagesCSV', pokemonImagesText);
-      }
-    }
-    
     // 画像マップの作成
     if (pokemonImagesText) {
       const imgRows = pokemonImagesText.split('\n');
@@ -91,18 +111,6 @@ async function fetchData() {
           pokemonImageMap[cols[0].trim()] = cols[1].trim();
         }
       });
-    }
-
-    // 3. アイテム名簿CSVの先読み（pokemon.html用）
-    if (!sessionStorage.getItem('cachedItemsCSV')) {
-      const URL_ITEMS = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent('https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?gid=1403600136&single=true&output=csv&t=' + timestamp);
-      fetch(URL_ITEMS)
-        .then(res => {
-          if (res.ok) return res.text();
-          throw new Error('Items fetch failed');
-        })
-        .then(itemsCsv => sessionStorage.setItem('cachedItemsCSV', itemsCsv))
-        .catch(err => console.error('items preload error:', err));
     }
 
     const rows = csvText.split('\n');
