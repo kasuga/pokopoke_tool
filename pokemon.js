@@ -234,4 +234,17 @@ function render(pokemon, items, container) {
   `;
 }
 
+// 「一覧に戻る」リンクのパラメータ引き継ぎ
+function updateBackLink() {
+    const backLink = document.querySelector('.back-link');
+    if (!backLink) return;
+
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.delete('name'); // ポケモン名は不要
+    
+    const queryString = currentParams.toString();
+    backLink.href = 'index.html' + (queryString ? '?' + queryString : '');
+}
+
 init();
+updateBackLink();

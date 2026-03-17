@@ -54,7 +54,12 @@ function updateSelectOptions(selectElement, optionsArray) {
 
 function updateAllFavSelects() {
     const selects = favFilterContainer.querySelectorAll('.filter-fav');
-    selects.forEach(sel => updateSelectOptions(sel, favoriteOptions));
+    if (selects.length === 0) {
+        // まだ一つもない場合は初期行を作成
+        favFilterContainer.appendChild(createFavFilterRow());
+    } else {
+        selects.forEach(sel => updateSelectOptions(sel, favoriteOptions));
+    }
 }
 
 function createFavFilterRow() {
@@ -82,7 +87,66 @@ function createFavFilterRow() {
 
 addFavFilterBtn.addEventListener('click', () => {
     favFilterContainer.appendChild(createFavFilterRow());
+    updateURL(); // フィルター行が増えたことをURLに反映
 });
+
+// --- URL同期用の関数ここから ---
+function updateURL() {
+    const params = new URLSearchParams();
+    
+    // 検索ワード
+    const q = searchName.value.trim();
+    if (q) params.set('q', q);
+    
+    // 好きな環境
+    const env = filterEnv.value;
+    if (env) params.set('env', env);
+    
+    // 好きなもの (複数)
+    const favs = Array.from(favFilterContainer.querySelectorAll('.filter-fav'))
+        .map(sel => sel.value)
+        .filter(val => val !== "");
+    if (favs.length > 0) params.set('fav', favs.join(','));
+    
+    // ページ番号
+    if (currentPage > 1) params.set('page', currentPage);
+    
+    const newRelativePathQuery = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+    history.replaceState(null, '', newRelativePathQuery);
+}
+
+function loadStateFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    
+    // 検索ワード
+    if (params.has('q')) searchName.value = params.get('q');
+    
+    // 好きな環境
+    if (params.has('env')) filterEnv.value = params.get('env');
+    
+    // 好きなもの (複数)
+    if (params.has('fav')) {
+        const favs = params.get('fav').split(',');
+        // 既存のセレクトボックスをクリア
+        favFilterContainer.innerHTML = '';
+        
+        favs.forEach((favVal) => {
+            const row = createFavFilterRow();
+            const select = row.querySelector('.filter-fav');
+            favFilterContainer.appendChild(row);
+            // オプションがセットされた後に値をセットする
+            select.value = favVal;
+        });
+    } else {
+        // パラメータがない場合は初期状態（1つだけ空のセレクト）にする
+        favFilterContainer.innerHTML = '';
+        favFilterContainer.appendChild(createFavFilterRow());
+    }
+    
+    // ページ番号
+    if (params.has('page')) currentPage = parseInt(params.get('page'), 10) || 1;
+}
+// --- URL同期用の関数ここまで ---
 
 function hiraToKata(str) {
   return str.replace(/[ぁ-ん]/g, function(s) {
@@ -184,6 +248,9 @@ async function fetchData() {
     updateSelectOptions(filterEnv, Array.from(envSet).sort());
     updateAllFavSelects();
 
+    // URLから状態を復元
+    loadStateFromURL();
+
     renderTable();
 
   } catch (error) {
@@ -240,7 +307,9 @@ function renderTable() {
       if (event.target.closest('.tag') || event.target.closest('a')) {
         return;
       }
-      window.location.href = `pokemon.html?name=${encodeURIComponent(pokemon.name)}`;
+      const currentParams = new URLSearchParams(window.location.search);
+      currentParams.set('name', pokemon.name);
+      window.location.href = `pokemon.html?${currentParams.toString()}`;
     };
 
     const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
@@ -251,11 +320,15 @@ function renderTable() {
         ? `<img src="${pokemon.imageUrl}" alt="${pokemon.name}" class="thumb-img">`
         : `<div class="thumb-img placeholder-img"></div>`;
 
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.set('name', pokemon.name);
+    const detailUrl = `pokemon.html?${currentParams.toString()}`;
+
     tr.innerHTML = `
       <td data-label="ポケモン名">
         <div class="pokemon-name-cell">
           ${imgHtml}
-          <strong><a href="pokemon.html?name=${encodeURIComponent(pokemon.name)}" class="pokemon-link">${pokemon.name}</a></strong>
+          <strong><a href="${detailUrl}" class="pokemon-link">${pokemon.name}</a></strong>
         </div>
       </td>
       <td data-label="🌲 好きな環境">${envTags}</td>
@@ -264,8 +337,11 @@ function renderTable() {
     tableBody.appendChild(tr);
   });
 
-  // 4. ページネーションボタンを描画
-  renderPagination(totalPages);
+    // 4. ページネーションボタンを描画
+    renderPagination(totalPages);
+
+    // URLを更新して現在の状態を保存
+    updateURL();
 }
 
 // ページネーションのボタンを作る関数▼
