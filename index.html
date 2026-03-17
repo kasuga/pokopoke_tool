@@ -32,11 +32,16 @@
           <option value="">すべて</option>
         </select>
       </div>
-      <div class="filter-group">
-        <label for="filterFav">🪑 好きなもので絞り込み</label>
-        <select id="filterFav">
-          <option value="">すべて</option>
-        </select>
+      <div class="filter-group multi-filter-group">
+        <label>🪑 好きなもので絞り込み (AND検索)</label>
+        <div id="favFilterContainer" class="fav-filter-container">
+          <div class="fav-filter-row">
+            <select class="filter-fav">
+              <option value="">すべて</option>
+            </select>
+          </div>
+        </div>
+        <button type="button" id="addFavFilter" class="add-filter-btn">＋ 別の条件を追加</button>
       </div>
     </div>
 

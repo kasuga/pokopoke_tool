@@ -28,14 +28,17 @@ let pokemonImageMap = {}; // ポケモン画像URLのマップ
 const tableBody = document.getElementById('tableBody');
 const searchName = document.getElementById('searchName');
 const filterEnv = document.getElementById('filterEnv');
-const filterFav = document.getElementById('filterFav');
-const paginationContainer = document.getElementById('pagination'); // 追加
+const favFilterContainer = document.getElementById('favFilterContainer');
+const addFavFilterBtn = document.getElementById('addFavFilter');
+const paginationContainer = document.getElementById('pagination');
 
 // ページネーション用の変数▼
 let currentPage = 1;
 const itemsPerPage = 10;
+let favoriteOptions = []; // 好きなものの全選択肢を保持
 
 function updateSelectOptions(selectElement, optionsArray) {
+  const currentValue = selectElement.value;
   selectElement.innerHTML = '<option value="">すべて</option>';
   optionsArray.forEach(optionValue => {
     const option = document.createElement('option');
@@ -43,7 +46,43 @@ function updateSelectOptions(selectElement, optionsArray) {
     option.textContent = optionValue;
     selectElement.appendChild(option);
   });
+  // 以前の選択値を復元（選択肢にある場合）
+  if (Array.from(selectElement.options).some(opt => opt.value === currentValue)) {
+    selectElement.value = currentValue;
+  }
 }
+
+function updateAllFavSelects() {
+    const selects = favFilterContainer.querySelectorAll('.filter-fav');
+    selects.forEach(sel => updateSelectOptions(sel, favoriteOptions));
+}
+
+function createFavFilterRow() {
+    const row = document.createElement('div');
+    row.className = 'fav-filter-row';
+    
+    const select = document.createElement('select');
+    select.className = 'filter-fav';
+    updateSelectOptions(select, favoriteOptions);
+    select.addEventListener('change', resetAndRender);
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-filter-btn';
+    removeBtn.textContent = '削除';
+    removeBtn.type = 'button';
+    removeBtn.onclick = () => {
+        row.remove();
+        resetAndRender();
+    };
+    
+    row.appendChild(select);
+    row.appendChild(removeBtn);
+    return row;
+}
+
+addFavFilterBtn.addEventListener('click', () => {
+    favFilterContainer.appendChild(createFavFilterRow());
+});
 
 function hiraToKata(str) {
   return str.replace(/[ぁ-ん]/g, function(s) {
@@ -141,8 +180,9 @@ async function fetchData() {
       }
     }
 
+    favoriteOptions = Array.from(favSet).sort();
     updateSelectOptions(filterEnv, Array.from(envSet).sort());
-    updateSelectOptions(filterFav, Array.from(favSet).sort());
+    updateAllFavSelects();
 
     renderTable();
 
@@ -156,14 +196,18 @@ async function fetchData() {
 function renderTable() {
   const nameQuery = searchName.value.trim().toLowerCase();
   const envQuery = filterEnv.value;
-  const favQuery = filterFav.value;
+  // 好きなもののフィルター値をすべて取得
+  const favSelects = Array.from(favFilterContainer.querySelectorAll('.filter-fav'));
+  const favQueries = favSelects.map(sel => sel.value).filter(val => val !== "");
 
-  // 1. まず条件に合うものを全て絞り込む
   const queryKata = hiraToKata(nameQuery);
   const filteredData = pokemonData.filter(pokemon => {
     const matchName = pokemon.name.includes(nameQuery) || pokemon.name.includes(queryKata);
     const matchEnv = envQuery === "" || pokemon.environments.includes(envQuery);
-    const matchFav = favQuery === "" || pokemon.favorites.includes(favQuery);
+    
+    // すべての好きなもの条件を満たすかチェック (AND検索)
+    const matchFav = favQueries.every(q => pokemon.favorites.includes(q));
+    
     return matchName && matchEnv && matchFav;
   });
 
@@ -304,7 +348,17 @@ tableBody.addEventListener('click', function(event) {
     if (target.classList.contains('env')) {
       filterEnv.value = tagText;
     } else if (target.classList.contains('fav')) {
-      filterFav.value = tagText;
+      // 空いている（「すべて」になっている）フィルターに優先的に入れる
+      const selects = Array.from(favFilterContainer.querySelectorAll('.filter-fav'));
+      let targetSelect = selects.find(sel => sel.value === "");
+      
+      // 空きがない場合は新しく追加する
+      if (!targetSelect) {
+          const row = createFavFilterRow();
+          favFilterContainer.appendChild(row);
+          targetSelect = row.querySelector('.filter-fav');
+      }
+      targetSelect.value = tagText;
     }
     resetAndRender(); // タグクリック時も1ページ目に戻す
   }
@@ -313,6 +367,7 @@ tableBody.addEventListener('click', function(event) {
 // リスナーを resetAndRender に変更
 searchName.addEventListener('input', resetAndRender);
 filterEnv.addEventListener('change', resetAndRender);
-filterFav.addEventListener('change', resetAndRender);
+// 初期の好きなものフィルターにもイベントを貼る
+document.querySelector('.filter-fav').addEventListener('change', resetAndRender);
 
 fetchData();

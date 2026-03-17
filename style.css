@@ -37,6 +37,56 @@ h1 {
     min-width: 200px;
 }
 
+.multi-filter-group {
+    flex: 2; /* 複数並ぶため少し広めにとる */
+}
+
+.fav-filter-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.fav-filter-row {
+    display: flex;
+    gap: 5px;
+}
+
+.fav-filter-row select {
+    flex: 1;
+}
+
+.remove-filter-btn {
+    padding: 5px 10px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.remove-filter-btn:hover {
+    background-color: #c0392b;
+}
+
+.add-filter-btn {
+    align-self: flex-start;
+    padding: 6px 12px;
+    background-color: #2ecc71;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.add-filter-btn:hover {
+    background-color: #27ae60;
+}
+
 label {
     font-weight: bold;
     margin-bottom: 5px;
