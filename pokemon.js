@@ -4,21 +4,49 @@ const URL_ITEMS = BASE_URL + 'gid=1403600136&single=true&output=csv';
 const URL_POKEMON_IMAGES = BASE_URL + 'gid=241891908&output=csv';
 const URL_ITEM_IMAGES = BASE_URL + 'gid=1960224020&output=csv';
 
+const CACHE_EXPIRY = 3600 * 1000;
 const getCacheBuster = () => Math.floor(new Date().getTime() / (1000 * 60 * 5));
+
+async function fetchWithTimeout(url, options = {}, timeout = 3000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(id);
+    return response;
+  } catch (e) {
+    clearTimeout(id);
+    throw e;
+  }
+}
 
 async function smartFetch(url) {
   const fullUrl = url + '&t=' + getCacheBuster();
   try {
-    const res = await fetch(fullUrl);
+    const res = await fetchWithTimeout(fullUrl);
     if (res.ok) return await res.text();
   } catch (e) {
-    console.warn("Direct fetch failed, falling back to proxy:", e);
+    console.warn("Direct fetch failed or timed out, falling back to proxy:", e);
   }
   const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(fullUrl);
   const res = await fetch(proxyUrl);
   if (!res.ok) throw new Error('通信エラー');
   return await res.text();
 }
+
+const cache = {
+  set(key, data) {
+    const item = { data, timestamp: Date.now() };
+    localStorage.setItem(key, JSON.stringify(item));
+  },
+  get(key) {
+    const itemStr = localStorage.getItem(key);
+    if (!itemStr) return null;
+    const item = JSON.parse(itemStr);
+    if (Date.now() - item.timestamp > CACHE_EXPIRY) return null;
+    return item.data;
+  }
+};
 
 async function init() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -31,59 +59,57 @@ async function init() {
   }
 
   try {
-    let likesCsv = sessionStorage.getItem('cachedLikesCSV');
-    let itemsCsv = sessionStorage.getItem('cachedItemsCSV');
-    let pokemonImagesCsv = sessionStorage.getItem('cachedPokemonImagesCSV');
-    let itemImagesCsv = sessionStorage.getItem('cachedItemImagesCSV');
+    let csvLikes = cache.get('cachedLikesCSV');
+    let csvItems = cache.get('cachedItemsCSV');
+    let csvPokemonImages = cache.get('cachedPokemonImagesCSV');
+    let csvItemImages = cache.get('cachedItemImagesCSV');
+
+    // キャッシュがある場合は即時描画
+    if (csvLikes && csvItems && csvPokemonImages && csvItemImages) {
+        processAndRenderDetail(csvLikes, csvItems, csvPokemonImages, csvItemImages, pokemonName, container);
+    }
 
     const fetchPromises = [];
     const keys = [];
 
-    const checkAndPush = (csv, url, key) => {
-      if (!csv) {
-        fetchPromises.push(smartFetch(url));
-        keys.push(key);
-      } else {
-        fetchPromises.push(Promise.resolve(csv));
-        keys.push(null);
-      }
-    };
+    if (!csvLikes) { fetchPromises.push(smartFetch(URL_LIKES)); keys.push('cachedLikesCSV'); }
+    if (!csvItems) { fetchPromises.push(smartFetch(URL_ITEMS)); keys.push('cachedItemsCSV'); }
+    if (!csvPokemonImages) { fetchPromises.push(smartFetch(URL_POKEMON_IMAGES)); keys.push('cachedPokemonImagesCSV'); }
+    if (!csvItemImages) { fetchPromises.push(smartFetch(URL_ITEM_IMAGES)); keys.push('cachedItemImagesCSV'); }
 
-    checkAndPush(likesCsv, URL_LIKES, 'cachedLikesCSV');
-    checkAndPush(itemsCsv, URL_ITEMS, 'cachedItemsCSV');
-    checkAndPush(pokemonImagesCsv, URL_POKEMON_IMAGES, 'cachedPokemonImagesCSV');
-    checkAndPush(itemImagesCsv, URL_ITEM_IMAGES, 'cachedItemImagesCSV');
+    if (fetchPromises.length > 0) {
+      const results = await Promise.all(fetchPromises);
+      results.forEach((text, i) => {
+        cache.set(keys[i], text);
+        if (keys[i] === 'cachedLikesCSV') csvLikes = text;
+        if (keys[i] === 'cachedItemsCSV') csvItems = text;
+        if (keys[i] === 'cachedPokemonImagesCSV') csvPokemonImages = text;
+        if (keys[i] === 'cachedItemImagesCSV') csvItemImages = text;
+      });
+      processAndRenderDetail(csvLikes, csvItems, csvPokemonImages, csvItemImages, pokemonName, container);
+    }
+  } catch (error) {
+    console.error("データの取得に失敗しました:", error);
+    container.innerHTML = '<p class="empty-message" style="color:red;">データの取得に失敗しました。再読み込みしてください。</p>';
+  }
+}
 
-    const results = await Promise.all(fetchPromises);
-    results.forEach((text, i) => {
-      if (keys[i]) sessionStorage.setItem(keys[i], text);
-    });
+function processAndRenderDetail(csvLikes, csvItems, csvPokemonImages, csvItemImages, pokemonName, container) {
+    if (!csvLikes || !csvItems || !csvPokemonImages || !csvItemImages) return;
 
-    [likesCsv, itemsCsv, pokemonImagesCsv, itemImagesCsv] = results;
+    const pokemonImageMap = parseImageCSV(csvPokemonImages);
+    const itemImageMap = parseImageCSV(csvItemImages);
 
-    sessionStorage.setItem('cachedLikesCSV', likesCsv);
-    sessionStorage.setItem('cachedItemsCSV', itemsCsv);
-    sessionStorage.setItem('cachedPokemonImagesCSV', pokemonImagesCsv);
-    sessionStorage.setItem('cachedItemImagesCSV', itemImagesCsv);
-
-    const pokemonImageMap = parseImageCSV(pokemonImagesCsv);
-    const itemImageMap = parseImageCSV(itemImagesCsv);
-
-    const pokemonData = parseLikesCSV(likesCsv, pokemonName, pokemonImageMap);
+    const pokemonData = parseLikesCSV(csvLikes, pokemonName, pokemonImageMap);
     if (!pokemonData) {
       container.innerHTML = `<p class="empty-message" style="color:red;">「${pokemonName}」のデータが見つかりませんでした。</p>`;
       return;
     }
 
-    const itemsData = parseItemsCSV(itemsCsv, itemImageMap);
+    const itemsData = parseItemsCSV(csvItems, itemImageMap);
     const relatedItems = getRelatedItems(pokemonData, itemsData);
 
     render(pokemonData, relatedItems, container);
-
-  } catch (error) {
-    console.error(error);
-    container.innerHTML = '<p class="empty-message" style="color:red;">データの読み込みに失敗しました。</p>';
-  }
 }
 
 function parseImageCSV(csv) {

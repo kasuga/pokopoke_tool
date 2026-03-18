@@ -14,6 +14,9 @@
 
     gtag('config', 'G-D97JZTCSSJ');
   </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Outfit:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 
@@ -45,19 +48,15 @@
       </div>
     </div>
 
-    <table id="pokemonTable">
-      <thead>
-        <tr>
-          <th style="width: 30%;">ポケモン名</th>
-          <th style="width: 35%;">好きな環境</th>
-          <th style="width: 35%;">好きなもの（家具・アイテム）</th>
-        </tr>
-      </thead>
-      <tbody id="tableBody">
-      </tbody>
-    </table>
+    <div id="pokemonGrid" class="pokemon-grid">
+      <!-- カードがここに動的に生成されます -->
+    </div>
 
     <div id="pagination" class="pagination"></div>
+
+    <footer class="site-footer">
+      <p>本ツールは個人による非公式のファンプロジェクトであり、株式会社ポケモン、任天堂、その他の権利元とは一切関係ありません。使用されている画像やデータの著作権はそれぞれの権利元に帰属します。</p>
+    </footer>
   </div>
 
   <script src="script.js"></script>
