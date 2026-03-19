@@ -1,8 +1,6 @@
 const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?';
 const URL_LIKES = BASE_URL + 'output=csv';
 const URL_ITEMS = BASE_URL + 'gid=1403600136&single=true&output=csv';
-const URL_POKEMON_IMAGES = BASE_URL + 'gid=241891908&output=csv';
-const URL_ITEM_IMAGES = BASE_URL + 'gid=1960224020&output=csv';
 
 const CACHE_EXPIRY = 3600 * 1000;
 const getCacheBuster = () => Math.floor(new Date().getTime() / (1000 * 60 * 5));
@@ -61,12 +59,10 @@ async function init() {
   try {
     let csvLikes = cache.get('cachedLikesCSV');
     let csvItems = cache.get('cachedItemsCSV');
-    let csvPokemonImages = cache.get('cachedPokemonImagesCSV');
-    let csvItemImages = cache.get('cachedItemImagesCSV');
 
     // キャッシュがある場合は即時描画
-    if (csvLikes && csvItems && csvPokemonImages && csvItemImages) {
-        processAndRenderDetail(csvLikes, csvItems, csvPokemonImages, csvItemImages, pokemonName, container);
+    if (csvLikes && csvItems) {
+        processAndRenderDetail(csvLikes, csvItems, pokemonName, container);
     }
 
     const fetchPromises = [];
@@ -74,8 +70,6 @@ async function init() {
 
     if (!csvLikes) { fetchPromises.push(smartFetch(URL_LIKES)); keys.push('cachedLikesCSV'); }
     if (!csvItems) { fetchPromises.push(smartFetch(URL_ITEMS)); keys.push('cachedItemsCSV'); }
-    if (!csvPokemonImages) { fetchPromises.push(smartFetch(URL_POKEMON_IMAGES)); keys.push('cachedPokemonImagesCSV'); }
-    if (!csvItemImages) { fetchPromises.push(smartFetch(URL_ITEM_IMAGES)); keys.push('cachedItemImagesCSV'); }
 
     if (fetchPromises.length > 0) {
       const results = await Promise.all(fetchPromises);
@@ -83,10 +77,8 @@ async function init() {
         cache.set(keys[i], text);
         if (keys[i] === 'cachedLikesCSV') csvLikes = text;
         if (keys[i] === 'cachedItemsCSV') csvItems = text;
-        if (keys[i] === 'cachedPokemonImagesCSV') csvPokemonImages = text;
-        if (keys[i] === 'cachedItemImagesCSV') csvItemImages = text;
       });
-      processAndRenderDetail(csvLikes, csvItems, csvPokemonImages, csvItemImages, pokemonName, container);
+      processAndRenderDetail(csvLikes, csvItems, pokemonName, container);
     }
   } catch (error) {
     console.error("データの取得に失敗しました:", error);
@@ -94,38 +86,22 @@ async function init() {
   }
 }
 
-function processAndRenderDetail(csvLikes, csvItems, csvPokemonImages, csvItemImages, pokemonName, container) {
-    if (!csvLikes || !csvItems || !csvPokemonImages || !csvItemImages) return;
+function processAndRenderDetail(csvLikes, csvItems, pokemonName, container) {
+    if (!csvLikes || !csvItems) return;
 
-    const pokemonImageMap = parseImageCSV(csvPokemonImages);
-    const itemImageMap = parseImageCSV(csvItemImages);
-
-    const pokemonData = parseLikesCSV(csvLikes, pokemonName, pokemonImageMap);
+    const pokemonData = parseLikesCSV(csvLikes, pokemonName);
     if (!pokemonData) {
       container.innerHTML = `<p class="empty-message" style="color:red;">「${pokemonName}」のデータが見つかりませんでした。</p>`;
       return;
     }
 
-    const itemsData = parseItemsCSV(csvItems, itemImageMap);
+    const itemsData = parseItemsCSV(csvItems);
     const relatedItems = getRelatedItems(pokemonData, itemsData);
 
     render(pokemonData, relatedItems, container);
 }
 
-function parseImageCSV(csv) {
-  const map = {};
-  if (!csv) return map;
-  const rows = csv.split('\n');
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i].trim();
-    if (!row) continue;
-    const cols = parseCSVRow(row);
-    if (cols.length >= 2) {
-      map[cols[0].trim()] = cols[1].trim();
-    }
-  }
-  return map;
-}
+// 画像パース処理削除
 
 function parseCSVRow(text) {
   const result = [];
@@ -152,7 +128,7 @@ function parseCSVRow(text) {
   return result;
 }
 
-function parseLikesCSV(csv, targetName, imageMap) {
+function parseLikesCSV(csv, targetName) {
   const rows = csv.split('\n');
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i].trim();
@@ -166,15 +142,14 @@ function parseLikesCSV(csv, targetName, imageMap) {
       return {
         name: name,
         environments: columns.length >= 2 ? columns[1].split(/[,、]/).map(s => s.trim()).filter(Boolean) : [],
-        favorites: columns.length >= 3 ? columns[2].split(/[,、]/).map(s => s.trim()).filter(Boolean) : [],
-        imageUrl: imageMap[name] || null
+        favorites: columns.length >= 3 ? columns[2].split(/[,、]/).map(s => s.trim()).filter(Boolean) : []
       };
     }
   }
   return null;
 }
 
-function parseItemsCSV(csv, imageMap) {
+function parseItemsCSV(csv) {
   const rows = csv.split('\n');
   const items = [];
   for (let i = 1; i < rows.length; i++) {
@@ -187,8 +162,7 @@ function parseItemsCSV(csv, imageMap) {
       items.push({
         name: name,
         category: columns[1].trim(),
-        tags: columns[2].split(/[,、]/).map(s => s.trim()).filter(Boolean),
-        imageUrl: imageMap[name] || null
+        tags: columns[2].split(/[,、]/).map(s => s.trim()).filter(Boolean)
       });
     }
   }
@@ -208,9 +182,7 @@ function render(pokemon, items, container) {
   const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
   const favTags = pokemon.favorites.map(fav => `<span class="tag fav">${fav}</span>`).join('');
 
-  const pokemonImgHtml = pokemon.imageUrl
-      ? `<img src="${pokemon.imageUrl}" alt="${pokemon.name}" class="detail-main-img">`
-      : `<div class="detail-main-img placeholder-img"></div>`;
+  const pokemonImgHtml = '';
 
   let itemsHtml = '<p class="empty-message">関連するアイテムがありません。</p>';
   if (items.length > 0) {
@@ -223,9 +195,7 @@ function render(pokemon, items, container) {
         return `<span class="${tagClass}">${t}</span>`;
       }).join('');
 
-      const itemImgHtml = item.imageUrl
-          ? `<div class="item-img-container"><img src="${item.imageUrl}" alt="${item.name}" class="item-img"></div>`
-          : `<div class="item-img-container"><div class="item-img placeholder-img"></div></div>`;
+      const itemImgHtml = '';
 
       itemsHtml += `
         <div class="item-card">

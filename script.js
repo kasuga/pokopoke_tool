@@ -1,6 +1,5 @@
 const BASE_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR3o-C_BEGd98LSvCu8_e6RSregYM4vrau8jdbqqn4A5gCYTwoILWo-js0dz566oX7YrdDwAtsPm3xe/pub?';
 const RAW_URL = BASE_URL + 'output=csv';
-const URL_POKEMON_IMAGES = BASE_URL + 'gid=241891908&output=csv';
 const URL_ITEMS = BASE_URL + 'gid=1403600136&single=true&output=csv';
 
 // キャッシュ定数（1時間 = 3600000ms）
@@ -67,7 +66,6 @@ const cache = {
   }
 };
 
-let pokemonImageMap = {}; 
 let pokemonData = [];
 const pokemonGrid = document.getElementById('pokemonGrid');
 const searchName = document.getElementById('searchName');
@@ -171,26 +169,23 @@ async function fetchData() {
     pokemonGrid.innerHTML = '<p class="empty-message">データを読み込み中...</p>';
 
     let csvText = cache.get('cachedLikesCSV');
-    let pokemonImagesText = cache.get('cachedPokemonImagesCSV');
 
-    if (csvText && pokemonImagesText) {
-      processAndRender(csvText, pokemonImagesText);
+    if (csvText) {
+      processAndRender(csvText);
     }
 
     const fetchPromises = [];
     const keys = [];
 
     if (!csvText) { fetchPromises.push(smartFetch(RAW_URL)); keys.push('cachedLikesCSV'); }
-    if (!pokemonImagesText) { fetchPromises.push(smartFetch(URL_POKEMON_IMAGES)); keys.push('cachedPokemonImagesCSV'); }
 
     if (fetchPromises.length > 0) {
       const results = await Promise.all(fetchPromises);
       results.forEach((text, i) => {
         cache.set(keys[i], text);
         if (keys[i] === 'cachedLikesCSV') csvText = text;
-        if (keys[i] === 'cachedPokemonImagesCSV') pokemonImagesText = text;
       });
-      processAndRender(csvText, pokemonImagesText);
+      processAndRender(csvText);
     }
   } catch (error) {
     console.error("データの読み込みに失敗しました:", error);
@@ -198,19 +193,9 @@ async function fetchData() {
   }
 }
 
-function processAndRender(csvText, pokemonImagesText) {
+function processAndRender(csvText) {
   try {
-    if (!csvText || !pokemonImagesText) return;
-
-    // 画像マップの作成
-    const imgRows = pokemonImagesText.split('\n');
-    imgRows.forEach((row, idx) => {
-      if (idx === 0) return;
-      const cols = parseCSVRow(row.trim());
-      if (cols.length >= 2) {
-        pokemonImageMap[cols[0].trim()] = cols[1].trim();
-      }
-    });
+    if (!csvText) return;
 
     const rows = csvText.split('\n');
     pokemonData = [];
@@ -228,8 +213,7 @@ function processAndRender(csvText, pokemonImagesText) {
         pokemonData.push({
           name: name,
           environments: environments,
-          favorites: favorites,
-          imageUrl: pokemonImageMap[name] || null
+          favorites: favorites
         });
         environments.forEach(env => envSet.add(env));
         favorites.forEach(fav => favSet.add(fav));
@@ -312,12 +296,7 @@ function renderTable() {
 
     const envTags = pokemon.environments.map(env => `<span class="tag env">${env}</span>`).join('');
     const favTags = pokemon.favorites.map(fav => `<span class="tag fav">${fav}</span>`).join('');
-    const imgHtml = pokemon.imageUrl 
-        ? `<img src="${pokemon.imageUrl}" alt="${pokemon.name}" class="card-img">`
-        : `<div class="card-img placeholder-img"></div>`;
-
     card.innerHTML = `
-      <div class="card-img-container">${imgHtml}</div>
       <div class="card-content">
         <h3 class="card-title">${pokemon.name}</h3>
         <div class="card-tags-section">
